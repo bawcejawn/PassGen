@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PassGen</title>
+<meta name="description" content="A fast, private password generator. Everything runs in your browser — nothing is ever sent or stored.">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+:root{
+  --bg:#f6f7f9; --surface:#ffffff; --surface-2:#f0f2f5; --line:#e3e6eb;
+  --text:#111318; --muted:#626a77; --faint:#8b93a0;
+  --accent:#2f6bff; --accent-ink:#ffffff; --accent-soft:#e7eeff;
+  --num:#1d62e8; --sym:#d6345b;
+  --weak:#e5484d; --fair:#f5a524; --good:#30a46c; --great:#1d9a6c;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
+  --radius:18px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --line:#2a2f3a;
+    --text:#eef0f4; --muted:#a2a9b6; --faint:#6f7785;
+    --accent:#5b8cff; --accent-ink:#0b0d12; --accent-soft:#1e2a47;
+    --num:#7aa7ff; --sym:#ff7a98;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --line:#2a2f3a;
+  --text:#eef0f4; --muted:#a2a9b6; --faint:#6f7785;
+  --accent:#5b8cff; --accent-ink:#0b0d12; --accent-soft:#1e2a47;
+  --num:#7aa7ff; --sym:#ff7a98;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--text);
+  font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh; padding:env(safe-area-inset-top) 16px calc(32px + env(safe-area-inset-bottom));
+  transition:background .25s,color .25s;
+}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:680px;margin:0 auto}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:22px 0 18px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;font-size:18px}
+.brand svg{width:28px;height:28px}
+.icon-btn{
+  width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--surface);
+  display:grid;place-items:center;transition:background .15s,transform .1s;
+}
+.icon-btn:hover{background:var(--surface-2)}
+.icon-btn:active{transform:scale(.95)}
+.icon-btn svg{width:18px;height:18px}
+
+h1{font-size:clamp(26px,5vw,34px);line-height:1.15;letter-spacing:-.02em;margin:6px 0 6px}
+.sub{color:var(--muted);margin:0 0 22px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+
+/* Output */
+.output{padding:22px 22px 18px}
+.pw{
+  font:500 clamp(20px,4.6vw,28px)/1.4 ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  overflow-wrap:anywhere;min-height:2.8em;display:block;
+  letter-spacing:.01em;user-select:all;cursor:text;
+}
+.pw .n{color:var(--num)} .pw .s{color:var(--sym)}
+.pw.flash{animation:flash .35s ease}
+@keyframes flash{from{opacity:.25;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+.meter{display:flex;align-items:center;gap:12px;margin:14px 0 18px}
+.bars{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.bars i{height:6px;border-radius:99px;background:var(--surface-2);transition:background .3s}
+.strength{font-size:14px;color:var(--muted);white-space:nowrap}
+.strength b{color:var(--text);font-weight:600}
+
+.actions{display:flex;gap:10px}
+.btn{
+  flex:1;height:48px;border-radius:14px;border:1px solid var(--line);background:var(--surface-2);
+  display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;
+  transition:background .15s,transform .1s,border-color .15s;
+}
+.btn:hover{border-color:var(--faint)}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn svg{width:18px;height:18px}
+.btn.spin svg{animation:spin .4s ease}
+@keyframes spin{to{transform:rotate(360deg)}}
+.kbd{font-size:12px;opacity:.6;font-weight:500;border:1px solid currentColor;border-radius:6px;padding:0 5px;margin-left:2px}
+@media (max-width:520px){.kbd{display:none}}
+@media (max-width:440px){.row.sep-row{flex-direction:column;align-items:flex-start;gap:10px}.row.sep-row .chips{justify-content:flex-start}}
+
+/* Settings */
+.settings{margin-top:16px;padding:6px 22px 10px}
+.tabs{
+  display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface-2);border-radius:12px;padding:4px;
+  margin:16px 0 8px;position:relative;
+}
+.tabs button{position:relative;z-index:1;border:0;background:none;height:38px;border-radius:9px;font-weight:600;color:var(--muted);transition:color .2s}
+.tabs button[aria-selected="true"]{color:var(--text)}
+.tabs .pill{position:absolute;z-index:0;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/3);border-radius:9px;background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.12);transition:transform .28s cubic-bezier(.3,.7,.2,1)}
+
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row label.name{font-weight:500}
+.row .hint{display:block;color:var(--faint);font-size:13px;font-weight:400}
+.panel{display:none}
+.panel.on{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* Slider */
+.slider-row{display:block}
+.slider-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{width:32px;height:32px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:18px;line-height:1}
+.stepper input{width:52px;height:32px;text-align:center;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-weight:600;-moz-appearance:textfield}
+.stepper input::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:linear-gradient(to right,var(--accent) var(--p,50%),var(--surface-2) var(--p,50%))}
+input[type=range]::-moz-range-track{height:6px;border-radius:99px;background:var(--surface-2)}
+input[type=range]::-moz-range-progress{height:6px;border-radius:99px;background:var(--accent)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.12);box-shadow:0 2px 6px rgba(0,0,0,.25);transition:transform .1s}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.12)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.12);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+
+/* Switch */
+.switch{position:relative;width:46px;height:28px;flex:none}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:1}
+.switch span{position:absolute;inset:0;border-radius:99px;background:var(--line);transition:background .2s}
+.switch span::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .22s cubic-bezier(.3,.7,.2,1)}
+.switch input:checked+span{background:var(--accent)}
+.switch input:checked+span::after{transform:translateX(18px)}
+.switch input:focus-visible+span{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.chips button{min-width:40px;height:34px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font:600 14px ui-monospace,Menlo,monospace;transition:all .15s}
+.chips button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+
+/* History */
+.history{margin-top:16px;padding:16px 22px}
+.history-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.history-head h2{font-size:15px;margin:0}
+.link{border:0;background:none;color:var(--accent);font-weight:600;font-size:14px;padding:4px}
+.history ul{list-style:none;margin:0;padding:0}
+.history li{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.history li:first-child{border-top:0}
+.history code{flex:1;font:14px ui-monospace,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.history .empty{color:var(--faint);font-size:14px;padding:8px 0}
+.mini{border:1px solid var(--line);background:var(--surface-2);border-radius:9px;height:30px;padding:0 10px;font-size:13px;font-weight:600}
+
+.note{display:flex;gap:10px;color:var(--muted);font-size:14px;margin:22px 4px 0}
+.note svg{flex:none;width:18px;height:18px;margin-top:2px;color:var(--good)}
+footer{color:var(--faint);font-size:13px;text-align:center;margin-top:28px}
+footer a{color:inherit}
+
+/* Toast */
+.toast{
+  position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translate(-50%,20px);opacity:0;
+  background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;
+  display:flex;gap:8px;align-items:center;pointer-events:none;transition:all .25s cubic-bezier(.3,.7,.2,1);box-shadow:var(--shadow)
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast svg{width:16px;height:16px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="var(--accent)"/><path d="M11 14v-2.5a5 5 0 0 1 10 0V14" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><rect x="8.5" y="14" width="15" height="11" rx="3" fill="#fff"/><circle cx="16" cy="19.5" r="1.8" fill="var(--accent)"/></svg>
+      PassGen
+    </div>
+    <button class="icon-btn" id="themeBtn" aria-label="Toggle dark mode" title="Toggle theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    </button>
+  </header>
+
+  <h1>Password generator</h1>
+  <p class="sub">Strong, random passwords in one click. Generated on your device — never sent anywhere.</p>
+
+  <section class="card output" aria-label="Generated password">
+    <div class="pw" id="pw" aria-live="polite" tabindex="0" title="Click to copy"></div>
+    <div class="meter">
+      <div class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div class="strength" id="strength"></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="copyBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        <span>Copy</span><span class="kbd">C</span>
+      </button>
+      <button class="btn" id="regenBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg>
+        <span>Refresh</span><span class="kbd">Space</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="card settings" aria-label="Options">
+    <div class="tabs" role="tablist">
+      <span class="pill" id="pill"></span>
+      <button role="tab" data-mode="random" aria-selected="true">Random</button>
+      <button role="tab" data-mode="memorable" aria-selected="false">Memorable</button>
+      <button role="tab" data-mode="pin" aria-selected="false">PIN</button>
+    </div>
+
+    <!-- Random -->
+    <div class="panel on" data-panel="random">
+      <div class="row slider-row">
+        <div class="slider-head"><label class="name" for="rLen">Characters</label>
+          <div class="stepper"><button data-step="-1" data-for="rLen" aria-label="Fewer">−</button><input type="number" id="rLenNum" data-mirror="rLen" inputmode="numeric" aria-label="Characters"><button data-step="1" data-for="rLen" aria-label="More">+</button></div>
+        </div>
+        <input type="range" id="rLen" min="8" max="100" value="20">
+      </div>
+      <div class="row"><label class="name" for="rUpper">Uppercase<span class="hint">A–Z</span></label><span class="switch"><input type="checkbox" id="rUpper" checked><span></span></span></div>
+      <div class="row"><label class="name" for="rNum">Numbers<span class="hint">0–9</span></label><span class="switch"><input type="checkbox" id="rNum" checked><span></span></span></div>
+      <div class="row"><label class="name" for="rSym">Symbols<span class="hint">!@#$%^&amp;*…</span></label><span class="switch"><input type="checkbox" id="rSym" checked><span></span></span></div>
+      <div class="row"><label class="name" for="rAmb">Avoid look-alikes<span class="hint">No 0/O, 1/l/I, etc.</span></label><span class="switch"><input type="checkbox" id="rAmb"><span></span></span></div>
+    </div>
+
+    <!-- Memorable -->
+    <div class="panel" data-panel="memorable">
+      <div class="row slider-row">
+        <div class="slider-head"><label class="name" for="mWords">Words</label>
+          <div class="stepper"><button data-step="-1" data-for="mWords" aria-label="Fewer">−</button><input type="number" id="mWordsNum" data-mirror="mWords" inputmode="numeric" aria-label="Words"><button data-step="1" data-for="mWords" aria-label="More">+</button></div>
+        </div>
+        <input type="range" id="mWords" min="3" max="12" value="5">
+      </div>
+      <div class="row sep-row"><span class="name">Separator</span>
+        <div class="chips" id="sepChips">
+          <button data-sep="-" aria-pressed="true">-</button><button data-sep="." aria-pressed="false">.</button><button data-sep="_" aria-pressed="false">_</button><button data-sep="," aria-pressed="false">,</button><button data-sep=" " aria-pressed="false" aria-label="Space">␣</button><button data-sep="#" aria-pressed="false" aria-label="Random digit">0–9</button>
+        </div>
+      </div>
+      <div class="row"><label class="name" for="mCap">Capitalize<span class="hint">First letter of each word</span></label><span class="switch"><input type="checkbox" id="mCap"><span></span></span></div>
+      <div class="row"><label class="name" for="mNum">Add a number<span class="hint">Appended to a random word</span></label><span class="switch"><input type="checkbox" id="mNum"><span></span></span></div>
+    </div>
+
+    <!-- PIN -->
+    <div class="panel" data-panel="pin">
+      <div class="row slider-row">
+        <div class="slider-head"><label class="name" for="pLen">Digits</label>
+          <div class="stepper"><button data-step="-1" data-for="pLen" aria-label="Fewer">−</button><input type="number" id="pLenNum" data-mirror="pLen" inputmode="numeric" aria-label="Digits"><button data-step="1" data-for="pLen" aria-label="More">+</button></div>
+        </div>
+        <input type="range" id="pLen" min="4" max="12" value="6">
+      </div>
+    </div>
+  </section>
+
+  <section class="card history" aria-label="Recent passwords">
+    <div class="history-head">
+      <h2>Recent <span style="color:var(--faint);font-weight:500">· this tab only</span></h2>
+      <div><button class="link" id="revealBtn">Show</button><button class="link" id="clearBtn">Clear</button></div>
+    </div>
+    <ul id="hist"></ul>
+  </section>
+
+  <p class="note">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    <span>Uses your browser's cryptographic random generator (<code>crypto.getRandomValues</code>) with unbiased sampling. Passwords are never saved, logged, or sent over the network — close the tab and they're gone. Works fully offline.</span>
+  </p>
+  <footer>Memorable words from the <a href="https://www.eff.org/dice" rel="noopener">EFF long wordlist</a> (CC BY 3.0).</footer>
+</div>
+
+<div class="toast" id="toast" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg><span id="toastText">Copied</span></div>
+
+<script src="words.js"></script>
+<script src="passgen.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
